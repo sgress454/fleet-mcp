@@ -147,6 +147,40 @@ class FleetMcpServer {
    * Set up MCP handlers
    */
   private setupMcpHandlers(): void {
+    // Register the install_software tool
+    this.mcpServer.tool(
+      'install_software',
+      'Install software on a host managed by Fleet',
+      {
+        host_id: z.string().describe('Required. The host ID'),
+        software_id: z.string().describe('Required. The software title ID')
+      },
+      async (params: { host_id: string; software_id: string }) => {
+        try {
+          console.log(`Installing software ID ${params.software_id} on host ID ${params.host_id}`);
+          
+          const url = `/api/v1/fleet/hosts/${params.host_id}/software/${params.software_id}/install`;
+          const response = await this.axiosInstance.post(url);
+          console.log('Fleet API install request successful');
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }
+    );
+    
     // Register the list_host_software tool
     this.mcpServer.tool(
       'list_host_software',
