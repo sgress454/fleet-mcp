@@ -147,6 +147,58 @@ class FleetMcpServer {
    * Set up MCP handlers
    */
   private setupMcpHandlers(): void {
+    // Register the list_host_software tool
+    this.mcpServer.tool(
+      'list_host_software',
+      'List software installed on a specific host managed by Fleet',
+      {
+        id: z.string().describe('Required. The host ID'),
+        available_for_install: z.boolean().optional().describe('If true, only list software that is available for install (added by the user). Default is false.'),
+        installed_only: z.boolean().optional().describe('If true, only list software that is actually installed (has installed_versions). Default is false.')
+      },
+      async (params: { id: string; available_for_install?: boolean; installed_only?: boolean }) => {
+        try {
+          console.log(`Making Fleet API call to get software for host ID: ${params.id}`);
+          
+          // Build the URL with query parameters if needed
+          let url = `/api/v1/fleet/hosts/${params.id}/software`;
+          if (params.available_for_install) {
+            url += `?available_for_install=${params.available_for_install ? '1' : '0'}`;
+          }
+          
+          const response = await this.axiosInstance.get(url);
+          console.log('Fleet API call successful');
+          
+          // Filter software based on installed_only parameter if provided
+          if (params.installed_only) {
+            console.log('Filtering for installed software only');
+            const software = response.data.software || [];
+            const installedSoftware = software.filter((sw: any) => sw.installed_versions !== null);
+            console.log(`Found ${installedSoftware.length} installed software out of ${software.length} total`);
+            
+            // Replace the software array in the response data
+            response.data.software = installedSoftware;
+            response.data.count = installedSoftware.length;
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }
+    );
+    
     // Register the list_hosts tool
     this.mcpServer.tool(
       'list_hosts',
@@ -155,12 +207,14 @@ class FleetMcpServer {
         platform: z.string().optional().describe('Filter by platform (e.g., darwin, windows, ubuntu, ios, android)'),
         status: z.string().optional().describe('Filter by status (online, offline)'),
         team_id: z.string().optional().describe('Filter by team ID'),
+        email: z.string().optional().describe('Filter by user email'),
         limit: z.string().optional().describe('Maximum number of results to return')
       },
       async (params: {
         platform?: string;
         status?: string;
         team_id?: string;
+        email?: string;
         limit?: string;
       }) => {
         console.log('Tool handler called with params:', params);
@@ -168,7 +222,7 @@ class FleetMcpServer {
         
         try {
           console.log('Making Fleet API call to get hosts...');
-          const response = await this.axiosInstance.get('/api/v1/fleet/hosts');
+          const response = await this.axiosInstance.get('/api/v1/fleet/hosts?device_mapping=true');
           console.log('Fleet API call successful');
           
           // Get the hosts from the response
@@ -193,6 +247,21 @@ class FleetMcpServer {
             console.log(`Filtering by team_id: ${params.team_id}`);
             hosts = hosts.filter((host: any) => host.team_id === parseInt(params.team_id!, 10));
             console.log(`Found ${hosts.length} hosts with team_id ${params.team_id}`);
+          }
+          
+          // Apply email filter if provided
+          if (params.email) {
+            console.log(`Filtering by email: ${params.email}`);
+            hosts = hosts.filter((host: any) => {
+              // Check if the host has device_mapping with an email that matches
+              if (host.device_mapping && Array.isArray(host.device_mapping)) {
+                return host.device_mapping.some((mapping: any) =>
+                  mapping.email && mapping.email.toLowerCase() === params.email!.toLowerCase()
+                );
+              }
+              return false;
+            });
+            console.log(`Found ${hosts.length} hosts with email ${params.email}`);
           }
           
           // Apply limit if provided
