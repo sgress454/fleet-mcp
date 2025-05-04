@@ -7,6 +7,9 @@ An MCP (Model Context Protocol) server for interacting with Fleet API. This serv
 This MCP server implements the Model Context Protocol to provide AI assistants with the ability to interact with Fleet's device management platform. It exposes a set of tools and resources that can be used to:
 
 - Query and manage devices
+- View device software inventory
+- Install software on managed devices
+- Filter devices by platform, status, team, and user email
 - View and update policies
 - Run Fleet queries
 - Access device and policy information
@@ -122,32 +125,60 @@ This script will:
 
 The server provides the following tools:
 
-1. `query_devices` - Query devices based on filters
+1. `list_hosts` - List all hosts (devices) managed by Fleet
    - Parameters:
-     - `platform` (optional): Filter by platform (macOS, Windows, Linux)
+     - `platform` (optional): Filter by platform (e.g., darwin, windows, ubuntu, ios, android)
      - `status` (optional): Filter by status (online, offline)
+     - `team_id` (optional): Filter by team ID
+     - `email` (optional): Filter by user email
      - `limit` (optional): Maximum number of results to return
 
-2. `get_policies` - Get list of policies
+2. `list_host_software` - List software installed on a specific host managed by Fleet
    - Parameters:
-     - `limit` (optional): Maximum number of results to return
+     - `id` (required): The host ID
+     - `available_for_install` (optional): If true, only list software that is available for install and automatically sets installed_only to false. Default is false.
+     - `installed_only` (optional): If true, only list software that is actually installed (has installed_versions or status="installed"). Default is true. Ignored if available_for_install is true.
+     - `software_name` (optional): If provided, only list software that matches this name (case-insensitive partial match)
+
+3. `install_software` - Install software on a host managed by Fleet
+   - Parameters:
+     - `host_id` (required): The host ID
+     - `software_id` (required): The software title ID
 
 ### Available Resources
 
-The server provides the following resources:
-
-1. `fleet://devices/summary` - Summary of all devices managed by Fleet
-2. `fleet://devices/{id}` - Details for a specific device by ID
+The current implementation focuses on tools rather than resources. The MCP server provides tools for querying hosts, managing software, and performing actions on Fleet-managed devices.
 
 ### Example Prompts
 
 Here are some example prompts you can use with Cline to test the Fleet MCP server:
 
-- "Show me a summary of all devices managed by Fleet"
-- "Query devices running macOS"
-- "Get details for device with ID 1"
-- "List all policies in Fleet"
-- "Show me the Windows compliance policy"
+- "List all hosts managed by Fleet"
+- "List Windows hosts that belong to roadrunner@acme.com"
+- "Show me all software installed on host with ID 755"
+- "Check if TeamViewer is installed on host with ID 755"
+- "Show me software available for installation on host with ID 755"
+- "Install TeamViewer on host with ID 755"
+
+## Recent Improvements
+
+The Fleet MCP server has been enhanced with the following improvements:
+
+### Software Management
+
+- **Improved Software Detection**: The server now correctly identifies installed software by checking both `installed_versions` and `status="installed"` fields.
+- **Pagination Support**: Added `per_page=200` parameter to ensure comprehensive software listings.
+- **Intuitive Parameter Handling**: When `available_for_install` is set to true, the server automatically sets `installed_only` to false for consistent behavior.
+- **Software Name Filtering**: Added ability to filter software by name for easier identification of specific applications.
+
+### Host Management
+
+- **Email Filtering**: Added support for filtering hosts by user email using the device_mapping field.
+- **Team Filtering**: Added support for filtering hosts by team ID.
+
+### Software Installation
+
+- Added support for installing software on managed devices through the Fleet API.
 
 ## Updating
 
