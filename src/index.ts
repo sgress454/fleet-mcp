@@ -1,0 +1,241 @@
+#!/usr/bin/env node
+import { config } from 'dotenv';
+import axios from 'axios';
+import { createServer } from 'http';
+import express from 'express';
+import cors from 'cors';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { z } from 'zod';
+
+// Load environment variables
+config();
+
+// Fleet API configuration
+const FLEET_SERVER_URL = process.env.FLEET_SERVER_URL || 'https://fleet.example.com/api';
+const FLEET_API_KEY = process.env.FLEET_API_KEY;
+
+if (!FLEET_API_KEY) {
+  console.error('FLEET_API_KEY environment variable is required');
+  process.exit(1);
+}
+
+// MCP Server implementation
+class FleetMcpServer {
+  private app: express.Application;
+  private httpServer;
+  private mcpServer: McpServer;
+  private axiosInstance;
+  private transports: Record<string, SSEServerTransport> = {};
+  
+  constructor() {
+    // Initialize Express app
+    this.app = express();
+    
+    // Initialize axios instance with Fleet API configuration
+    this.axiosInstance = axios.create({
+      baseURL: FLEET_SERVER_URL,
+      headers: {
+        'Authorization': `Bearer ${FLEET_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // Configure Express
+    this.app.use(cors());
+    this.app.use(express.json());
+    
+    // Create HTTP server
+    this.httpServer = createServer(this.app);
+    
+    // Create MCP server
+    this.mcpServer = new McpServer({
+      name: 'fleet-api-server',
+      version: '0.1.0',
+    });
+    
+    // Set up MCP handlers
+    this.setupMcpHandlers();
+    
+    // Set up routes
+    this.setupRoutes();
+    
+    // Handle process termination
+    process.on('SIGINT', async () => {
+      console.log('Shutting down MCP server...');
+      
+      // Close all active transports
+      for (const sessionId in this.transports) {
+        try {
+          console.log(`Closing transport for session ${sessionId}`);
+          await this.transports[sessionId].close();
+          delete this.transports[sessionId];
+        } catch (error) {
+          console.error(`Error closing transport for session ${sessionId}:`, error);
+        }
+      }
+      
+      this.httpServer.close();
+      process.exit(0);
+    });
+  }
+  
+  /**
+   * Set up Express routes
+   */
+  private setupRoutes(): void {
+    // SSE endpoint for establishing the stream
+    this.app.get('/mcp', async (req, res) => {
+      console.log('Received GET request to /mcp (establishing SSE stream)');
+      try {
+        // Create a new SSE transport for the client
+        const transport = new SSEServerTransport('/mcp/messages', res);
+        
+        // Store the transport by session ID
+        const sessionId = transport.sessionId;
+        this.transports[sessionId] = transport;
+        
+        // Set up onclose handler to clean up transport when closed
+        transport.onclose = () => {
+          console.log(`SSE transport closed for session ${sessionId}`);
+          delete this.transports[sessionId];
+        };
+        
+        // Connect the transport to the MCP server
+        await this.mcpServer.connect(transport);
+        console.log(`Established SSE stream with session ID: ${sessionId}`);
+      } catch (error) {
+        console.error('Error establishing SSE stream:', error);
+        if (!res.headersSent) {
+          res.status(500).send('Error establishing SSE stream');
+        }
+      }
+    });
+    
+    // Messages endpoint for receiving client JSON-RPC requests
+    this.app.post('/mcp/messages', async (req, res) => {
+      console.log('Received POST request to /mcp/messages');
+      
+      // Extract session ID from URL query parameter
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        console.error('No session ID provided in request URL');
+        res.status(400).send('Missing sessionId parameter');
+        return;
+      }
+      
+      const transport = this.transports[sessionId];
+      if (!transport) {
+        console.error(`No active transport found for session ID: ${sessionId}`);
+        res.status(404).send('Session not found');
+        return;
+      }
+      
+      try {
+        // Handle the POST message with the transport
+        await transport.handlePostMessage(req, res, req.body);
+      } catch (error) {
+        console.error('Error handling request:', error);
+        if (!res.headersSent) {
+          res.status(500).send('Error handling request');
+        }
+      }
+    });
+  }
+  
+  /**
+   * Set up MCP handlers
+   */
+  private setupMcpHandlers(): void {
+    // Register the list_hosts tool
+    this.mcpServer.tool(
+      'list_hosts',
+      'List all hosts (devices) managed by Fleet',
+      {
+        platform: z.string().optional().describe('Filter by platform (e.g., darwin, windows, ubuntu, ios, android)'),
+        status: z.string().optional().describe('Filter by status (online, offline)'),
+        team_id: z.string().optional().describe('Filter by team ID'),
+        limit: z.string().optional().describe('Maximum number of results to return')
+      },
+      async (params: {
+        platform?: string;
+        status?: string;
+        team_id?: string;
+        limit?: string;
+      }) => {
+        console.log('Tool handler called with params:', params);
+        console.log('Platform parameter:', params.platform);
+        
+        try {
+          console.log('Making Fleet API call to get hosts...');
+          const response = await this.axiosInstance.get('/api/v1/fleet/hosts');
+          console.log('Fleet API call successful');
+          
+          // Get the hosts from the response
+          let hosts = response.data.hosts || [];
+          
+          // Apply platform filter if provided
+          if (params.platform) {
+            console.log(`Filtering by platform: ${params.platform}`);
+            hosts = hosts.filter((host: any) => host.platform === params.platform);
+            console.log(`Found ${hosts.length} hosts with platform ${params.platform}`);
+          }
+          
+          // Apply status filter if provided
+          if (params.status) {
+            console.log(`Filtering by status: ${params.status}`);
+            hosts = hosts.filter((host: any) => host.status === params.status);
+            console.log(`Found ${hosts.length} hosts with status ${params.status}`);
+          }
+          
+          // Apply team_id filter if provided
+          if (params.team_id) {
+            console.log(`Filtering by team_id: ${params.team_id}`);
+            hosts = hosts.filter((host: any) => host.team_id === parseInt(params.team_id!, 10));
+            console.log(`Found ${hosts.length} hosts with team_id ${params.team_id}`);
+          }
+          
+          // Apply limit if provided
+          if (params.limit) {
+            const limit = parseInt(params.limit, 10);
+            if (!isNaN(limit) && limit > 0 && limit < hosts.length) {
+              console.log(`Limiting results to ${limit} hosts`);
+              hosts = hosts.slice(0, limit);
+            }
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(hosts, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+      }
+    );
+  }
+  
+  /**
+   * Start the MCP server
+   */
+  async start(port: number = 3000): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.httpServer.listen(port, () => {
+        console.log(`Fleet MCP server running on http://localhost:${port}/mcp`);
+        resolve();
+      });
+    });
+  }
+}
+
+// Create and start the server
+const server = new FleetMcpServer();
+server.start().catch(console.error);

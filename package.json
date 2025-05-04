@@ -1,0 +1,50 @@
+{
+  "name": "fleet-mcp",
+  "version": "0.1.0",
+  "description": "An MCP server for interacting with Fleet API",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc && node -e \"import('fs').then(fs => fs.chmodSync('build/index.js', '755'))\"",
+    "start": "node build/index.js",
+    "dev": "tsc -w",
+    "lint": "eslint src --ext .ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-server": "node scripts/run-ts.cjs src/test-client.ts",
+    "test-fleet-api": "node scripts/run-ts.cjs src/test-fleet-api.ts",
+    "test-with-cline": "node scripts/run-ts.cjs src/test-with-cline.ts",
+    "install-mcp": "node scripts/run-ts.cjs src/install-mcp.ts",
+    "uninstall-mcp": "node scripts/run-ts.cjs src/uninstall-mcp.ts",
+    "update-credentials": "node scripts/run-ts.cjs src/update-credentials.ts",
+    "check-updates": "node scripts/run-ts.cjs src/check-updates.ts",
+    "troubleshoot": "node scripts/run-ts.cjs src/troubleshoot.ts"
+  },
+  "keywords": [
+    "mcp",
+    "fleet",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.49.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.2.2"
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}

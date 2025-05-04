@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "fleet": {
+      "url": "http://localhost:3000/mcp",
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
