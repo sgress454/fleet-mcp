@@ -187,33 +187,56 @@ class FleetMcpServer {
       'List software installed on a specific host managed by Fleet',
       {
         id: z.string().describe('Required. The host ID'),
-        available_for_install: z.boolean().optional().describe('If true, only list software that is available for install (added by the user). Default is false.'),
-        installed_only: z.boolean().optional().describe('If true, only list software that is actually installed (has installed_versions). Default is false.')
+        available_for_install: z.boolean().optional().describe('If true, only list software that is available for install (added by the user) and automatically sets installed_only to false. Default is false.'),
+        installed_only: z.boolean().optional().describe('If true, only list software that is actually installed (has installed_versions or status="installed"). Default is true. Ignored if available_for_install is true.'),
+        software_name: z.string().optional().describe('If provided, only list software that matches this name (case-insensitive partial match)')
       },
-      async (params: { id: string; available_for_install?: boolean; installed_only?: boolean }) => {
+      async (params: { id: string; available_for_install?: boolean; installed_only?: boolean; software_name?: string }) => {
         try {
           console.log(`Making Fleet API call to get software for host ID: ${params.id}`);
           
           // Build the URL with query parameters if needed
-          let url = `/api/v1/fleet/hosts/${params.id}/software`;
+          let url = `/api/v1/fleet/hosts/${params.id}/software?per_page=200`;
           if (params.available_for_install) {
-            url += `?available_for_install=${params.available_for_install ? '1' : '0'}`;
+            url += `&available_for_install=${params.available_for_install ? '1' : '0'}`;
           }
           
           const response = await this.axiosInstance.get(url);
           console.log('Fleet API call successful');
           
-          // Filter software based on installed_only parameter if provided
-          if (params.installed_only) {
-            console.log('Filtering for installed software only');
-            const software = response.data.software || [];
-            const installedSoftware = software.filter((sw: any) => sw.installed_versions !== null);
-            console.log(`Found ${installedSoftware.length} installed software out of ${software.length} total`);
-            
-            // Replace the software array in the response data
-            response.data.software = installedSoftware;
-            response.data.count = installedSoftware.length;
+          let software = response.data.software || [];
+          
+          // If available_for_install is true, automatically set installed_only to false
+          let effectiveInstalledOnly = params.installed_only !== false;
+          if (params.available_for_install === true) {
+            console.log('available_for_install is true, automatically setting installed_only to false');
+            effectiveInstalledOnly = false;
           }
+          
+          // Filter software based on installed_only parameter (default to true if not provided)
+          if (effectiveInstalledOnly) {
+            console.log('Filtering for installed software only');
+            const installedSoftware = software.filter((sw: any) =>
+              sw.installed_versions !== null || sw.status === "installed"
+            );
+            console.log(`Found ${installedSoftware.length} installed software out of ${software.length} total`);
+            software = installedSoftware;
+          }
+          
+          // Filter software by name if provided
+          if (params.software_name) {
+            console.log(`Filtering for software matching name: ${params.software_name}`);
+            const nameLower = params.software_name.toLowerCase();
+            const matchingSoftware = software.filter((sw: any) =>
+              sw.name.toLowerCase().includes(nameLower)
+            );
+            console.log(`Found ${matchingSoftware.length} software matching name "${params.software_name}"`);
+            software = matchingSoftware;
+          }
+          
+          // Update the response data with filtered software
+          response.data.software = software;
+          response.data.count = software.length;
           
           return {
             content: [
