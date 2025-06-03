@@ -550,6 +550,50 @@ class FleetMcpServer {
       }
     );
     
+    // Register the list_team_policies tool
+    this.mcpServer.tool(
+      'list_team_policies',
+      'List policies for a specific team',
+      {
+        id: z.string().describe('Required. The team ID'),
+        merge_inherited: z.boolean().optional().describe('If true, includes global policies inherited by the team')
+      },
+      async (params: any) => {
+        try {
+          const queryParams = new URLSearchParams();
+          if (params.merge_inherited !== undefined) {
+            queryParams.append('merge_inherited', params.merge_inherited.toString());
+          }
+          
+          const url = `/api/v1/fleet/teams/${params.id}/policies${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          const response = await this.axiosInstance.get(url);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          
+          if (error.response?.status === 404) {
+            throw {
+              code: 'not_found',
+              message: `Team with ID ${params.id} not found`,
+            };
+          }
+          
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
     // Register the list_queries tool
     this.mcpServer.tool(
       'list_queries',
@@ -713,7 +757,7 @@ class FleetMcpServer {
     // Register the get_hosts_count tool
     this.mcpServer.tool(
       'get_hosts_count',
-      'Get count of hosts in Fleet',
+      'Get count of hosts in Fleet. To filter by platform, use the builtin label_id corresponding to the platform you want. Get the label_id using list_labels tool.',
       {
         page: z.number().optional().describe('Page number for pagination (0-indexed)'),
         per_page: z.number().optional().describe('Number of results per page'),
@@ -727,8 +771,7 @@ class FleetMcpServer {
         os_id: z.string().optional().describe('Filter by operating system ID'),
         os_name: z.string().optional().describe('Filter by operating system name'),
         os_version: z.string().optional().describe('Filter by operating system version'),
-        label_id: z.string().optional().describe('Filter by label ID'),
-        platform: z.string().optional().describe('Filter by platform')
+        label_id: z.string().optional().describe('Filter by label ID.'),
       },
       async (params: any) => {
         try {
