@@ -350,6 +350,62 @@ class FleetMcpServer {
         }
       }
     );
+    
+    // Register the get_host tool
+    this.mcpServer.tool(
+      'get_host',
+      'Get detailed information about a specific host managed by Fleet',
+      {
+        id: z.string().describe('Required. The host ID'),
+        exclude_software: z.boolean().optional().describe('If true, the response will not include a list of installed software for the host')
+      },
+      async (params: {
+        id: string;
+        exclude_software?: boolean;
+      }) => {
+        console.log('get_host called with params:', params);
+        
+        try {
+          // Build the query string
+          const queryParams = new URLSearchParams();
+          if (params.exclude_software) {
+            queryParams.append('exclude_software', 'true');
+          }
+          
+          const url = `/api/v1/fleet/hosts/${params.id}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          console.log('Making Fleet API call to:', url);
+          
+          const response = await this.axiosInstance.get(url);
+          console.log('Fleet API call successful');
+          
+          const host = response.data.host;
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(host, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          
+          // Handle specific error cases
+          if (error.response?.status === 404) {
+            throw {
+              code: 'not_found',
+              message: `Host with ID ${params.id} not found`,
+            };
+          }
+          
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
   }
   
   /**

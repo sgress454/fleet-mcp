@@ -155,6 +155,19 @@ The server provides the following tools:
      - `host_id` (required): The host ID
      - `software_id` (required): The software title ID
 
+4. `get_host_details` - Get detailed information about a specific host managed by Fleet
+   - Parameters:
+     - `id` (required): The host ID
+     - `exclude_software` (optional): If true, the response will not include a list of installed software for the host. Default is false.
+   - Returns comprehensive host information including:
+     - Basic information (name, platform, OS version, status)
+     - Hardware details (model, serial, CPU, memory)
+     - Network information (IP, MAC address)
+     - Assigned users and team
+     - Installed software (unless excluded)
+     - MDM enrollment status
+     - Policy compliance status
+
 ### Available Resources
 
 The current implementation focuses on tools rather than resources. The MCP server provides tools for querying hosts, managing software, and performing actions on Fleet-managed devices.
@@ -253,6 +266,7 @@ mcp-servers.json:
       "url": "http://localhost:3000/mcp",
       "disabled": false,
       "alwaysAllow": [
+        "get_host",
         "list_hosts",
         "list_host_software"
       ],
@@ -265,7 +279,7 @@ mcp-servers.json:
 Sample prompt:
 
 ```
-claude -p "Does Victor's hosts have Microsoft Edge installed?" --mcp-config mcp-servers.json --allowedTools 'mcp__fleet__list_hosts,mcp__fleet__list_host_software' --output-format stream-json --system-prompt "You are an IT admin." --verbose
+claude -p "Does Victor's hosts have Microsoft Edge installed?" --mcp-config mcp-servers.json --allowedTools 'mcp__fleet__get_host,mcp__fleet__list_hosts,mcp__fleet__list_host_software' --output-format stream-json --system-prompt "You are an IT admin." --verbose
 ```
 
 ## Development
