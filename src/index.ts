@@ -15,6 +15,9 @@ config();
 const FLEET_SERVER_URL = process.env.FLEET_SERVER_URL || 'https://fleet.example.com/api';
 const FLEET_API_KEY = process.env.FLEET_API_KEY;
 
+// Server configuration
+const PORT = parseInt(process.env.PORT || '3000', 10);
+
 if (!FLEET_API_KEY) {
   console.error('FLEET_API_KEY environment variable is required');
   process.exit(1);
@@ -364,4 +367,4 @@ class FleetMcpServer {
 
 // Create and start the server
 const server = new FleetMcpServer();
-server.start().catch(console.error);
+server.start(PORT).catch(console.error);

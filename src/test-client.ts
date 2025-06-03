@@ -1,10 +1,15 @@
 import axios from 'axios';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 /**
  * Simple test client for the Fleet MCP server
  */
 async function testMcpServer(): Promise<void> {
-  const baseUrl = 'http://localhost:3000/mcp';
+  const port = process.env.PORT || '3000';
+  const baseUrl = `http://localhost:${port}/mcp`;
   
   try {
     // Test server metadata

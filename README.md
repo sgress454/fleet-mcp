@@ -78,7 +78,17 @@ npm start
 ./start-server.sh
 ```
 
-The server will run on http://localhost:3000/mcp by default.
+The server will run on http://localhost:3000/mcp by default. You can change the port by setting the `PORT` environment variable in your `.env` file:
+
+```
+PORT=8080
+```
+
+Or by setting it when starting the server:
+
+```bash
+PORT=8080 npm start
+```
 
 ### Configuring with Cline
 

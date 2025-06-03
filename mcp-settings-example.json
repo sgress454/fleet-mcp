@@ -5,5 +5,6 @@
       "disabled": false,
       "alwaysAllow": []
     }
-  }
+  },
+  "_comment": "Change the port in the URL if you've configured a different PORT in your .env file"
 }
