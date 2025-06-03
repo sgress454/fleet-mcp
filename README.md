@@ -217,6 +217,116 @@ The server provides the following tools:
       - `query` (optional): Search query to filter users
       - `team_id` (optional): Filter by team ID
 
+12. `get_hosts_count` - Get count of hosts in Fleet
+    - Parameters: Multiple optional filters including page, per_page, query, status, team_id, policy_id, platform, etc.
+
+13. `get_host_summary` - Get host summary statistics
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+      - `platform` (optional): Filter by platform
+      - `low_disk_space` (optional): Gigabytes (GB) to filter by low disk space
+
+14. `get_mdm_summary` - Get MDM enrollment summary statistics
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+      - `platform` (optional): Filter by platform (darwin, windows)
+
+15. `list_activities` - List activities in Fleet
+    - Parameters: page, per_page, order_key, order_direction, query (all optional)
+
+16. `get_fleet_config` - Get Fleet configuration
+    - No parameters required
+
+17. `get_enroll_secrets` - Get global enroll secrets
+    - No parameters required
+
+18. `list_configuration_profiles` - List configuration profiles
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+
+19. `get_configuration_profile` - Get a specific configuration profile
+    - Parameters:
+      - `profile_uuid` (required): The profile UUID
+      - `alt` (optional): Set to "media" to download the profile file
+
+20. `get_configuration_profiles_summary` - Get configuration profiles summary statistics
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+
+21. `list_os_versions` - List operating system versions
+    - Parameters: team_id, platform, os_name, os_version, page, per_page, order_key, order_direction (all optional)
+
+22. `get_os_version` - Get details for a specific OS version
+    - Parameters:
+      - `id` (required): The OS version ID
+      - `team_id` (optional): Filter by team ID
+
+23. `list_vulnerabilities` - List vulnerabilities
+    - Parameters: team_id, page, per_page, order_key, order_direction, query, exploit (all optional)
+
+24. `get_vulnerability` - Get details for a specific vulnerability
+    - Parameters:
+      - `cve` (required): The CVE identifier (e.g., cve-2022-30190)
+      - `team_id` (optional): Filter by team ID
+
+25. `list_labels` - List all labels in Fleet
+    - Parameters: page, per_page, order_key, order_direction (all optional)
+
+26. `get_label` - Get details for a specific label
+    - Parameters:
+      - `id` (required): The label ID
+
+27. `get_labels_summary` - Get labels summary statistics
+    - No parameters required
+
+28. `get_label_hosts` - Get hosts that match a specific label
+    - Parameters:
+      - `id` (required): The label ID
+      - Additional optional filters: page, per_page, order_key, order_direction, query, status, team_id
+
+29. `list_scripts` - List all scripts in Fleet
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+      - `page` (optional): Page number for pagination
+      - `per_page` (optional): Number of results per page
+
+30. `get_script` - Get details for a specific script
+    - Parameters:
+      - `id` (required): The script ID
+      - `alt` (optional): Set to "media" to download the script file
+      - `team_id` (optional): Team ID (required for team scripts)
+
+31. `get_script_results` - Get results for a script execution
+    - Parameters:
+      - `execution_id` (required): The script execution ID
+
+32. `list_software_versions` - List software versions
+    - Parameters: page, per_page, order_key, order_direction, query, team_id, vulnerable (all optional)
+
+33. `get_software_version` - Get details for a specific software version
+    - Parameters:
+      - `id` (required): The software version ID
+      - `team_id` (optional): Filter by team ID
+
+34. `list_app_store_apps` - List available App Store apps
+    - Parameters:
+      - `team_id` (optional): Filter by team ID
+      - `platform` (optional): Filter by platform
+
+35. `list_fleet_maintained_apps` - List Fleet-maintained apps
+    - Parameters: team_id, platform, page, per_page, order_key, order_direction, query (all optional)
+
+36. `get_fleet_maintained_app` - Get details for a specific Fleet-maintained app
+    - Parameters:
+      - `id` (required): The Fleet-maintained app ID
+
+37. `list_invites` - List all invites in Fleet
+    - Parameters: page, per_page, order_key, order_direction, query (all optional)
+
+38. `get_invite` - Get details for a specific invite
+    - Parameters:
+      - `token` (required): The invite token
+
 ### Available Resources
 
 The current implementation focuses on tools rather than resources. The MCP server provides tools for querying hosts, managing software, and performing actions on Fleet-managed devices.
@@ -235,6 +345,19 @@ Here are some example prompts you can use with Cline to test the Fleet MCP serve
 - "List all queries available in Fleet"
 - "Show software titles installed across the fleet"
 - "List all users in Fleet"
+- "Get the count of hosts in Fleet"
+- "Show host summary statistics"
+- "Get MDM enrollment summary"
+- "List recent activities in Fleet"
+- "Show Fleet configuration"
+- "List all labels"
+- "Show hosts that match label ID 5"
+- "List all scripts available"
+- "Show vulnerabilities in the fleet"
+- "List OS versions across hosts"
+- "Show available App Store apps"
+- "List Fleet-maintained apps"
+- "Show all pending invites"
 - "Show me all software installed on host with ID 755"
 - "Check if TeamViewer is installed on host with ID 755"
 - "Show me software available for installation on host with ID 755"
