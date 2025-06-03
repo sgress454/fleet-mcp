@@ -231,6 +231,33 @@ This script will check for common issues:
 
 The script will provide recommendations for fixing any issues it finds.
 
+## With Claude Code
+
+mcp-servers.json:
+
+```json
+{
+  "mcpServers": {
+    "fleet": {
+      "type": "sse",
+      "url": "http://localhost:3000/mcp",
+      "disabled": false,
+      "alwaysAllow": [
+        "list_hosts",
+        "list_host_software"
+      ],
+      "timeout": 15
+    }
+  }
+}
+```
+
+Sample prompt:
+
+```
+claude -p "Does Victor's hosts have Microsoft Edge installed?" --mcp-config mcp-servers.json --allowedTools 'mcp__fleet__list_hosts,mcp__fleet__list_host_software' --output-format stream-json --system-prompt "You are an IT admin." --verbose
+```
+
 ## Development
 
 ### Project Structure
