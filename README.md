@@ -168,6 +168,55 @@ The server provides the following tools:
      - MDM enrollment status
      - Policy compliance status
 
+5. `get_fleet_version` - Get the version of the Fleet server
+   - No parameters required
+   - Returns version information including version number, branch, revision, Go version, build date, and build user
+
+6. `list_teams` - List all teams in Fleet
+   - Parameters:
+     - `page` (optional): Page number for pagination (0-indexed)
+     - `per_page` (optional): Number of results per page
+     - `order_key` (optional): Field to order results by
+     - `order_direction` (optional): Order direction (asc or desc)
+     - `query` (optional): Search query to filter teams
+
+7. `get_team_details` - Get detailed information about a specific team
+   - Parameters:
+     - `id` (required): The team ID
+   - Returns comprehensive team information including webhook settings and MDM configuration
+
+8. `list_global_policies` - List all global policies in Fleet
+   - No parameters required
+   - Returns all global policies with their query, description, resolution, platform, and compliance statistics
+
+9. `list_queries` - List all queries in Fleet
+   - Parameters:
+     - `page` (optional): Page number for pagination (0-indexed)
+     - `per_page` (optional): Number of results per page
+     - `order_key` (optional): Field to order results by
+     - `order_direction` (optional): Order direction (asc or desc)
+     - `query` (optional): Search query to filter queries
+
+10. `list_software_titles` - List software titles in Fleet
+    - Parameters:
+      - `page` (optional): Page number for pagination (0-indexed)
+      - `per_page` (optional): Number of results per page
+      - `order_key` (optional): Field to order results by
+      - `order_direction` (optional): Order direction (asc or desc)
+      - `query` (optional): Search query to filter software
+      - `team_id` (optional): Filter by team ID
+      - `platform` (optional): Filter by platform (darwin, windows, linux)
+      - `available_for_install` (optional): Filter software available for install
+
+11. `list_users` - List all users in Fleet
+    - Parameters:
+      - `page` (optional): Page number for pagination (0-indexed)
+      - `per_page` (optional): Number of results per page
+      - `order_key` (optional): Field to order results by
+      - `order_direction` (optional): Order direction (asc or desc)
+      - `query` (optional): Search query to filter users
+      - `team_id` (optional): Filter by team ID
+
 ### Available Resources
 
 The current implementation focuses on tools rather than resources. The MCP server provides tools for querying hosts, managing software, and performing actions on Fleet-managed devices.
@@ -178,6 +227,14 @@ Here are some example prompts you can use with Cline to test the Fleet MCP serve
 
 - "List all hosts managed by Fleet"
 - "List Windows hosts that belong to roadrunner@acme.com"
+- "Get details for host with ID 123"
+- "Show me the Fleet server version"
+- "List all teams in Fleet"
+- "Get details for team ID 1"
+- "Show all global policies"
+- "List all queries available in Fleet"
+- "Show software titles installed across the fleet"
+- "List all users in Fleet"
 - "Show me all software installed on host with ID 755"
 - "Check if TeamViewer is installed on host with ID 755"
 - "Show me software available for installation on host with ID 755"

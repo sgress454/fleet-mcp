@@ -406,6 +406,309 @@ class FleetMcpServer {
         }
       }
     );
+    
+    // Register the get_fleet_version tool
+    this.mcpServer.tool(
+      'get_fleet_version',
+      'Get the version of the Fleet server',
+      {},
+      async () => {
+        try {
+          const response = await this.axiosInstance.get('/api/v1/fleet/version');
+          
+          const version = response.data;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(version, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the list_teams tool
+    this.mcpServer.tool(
+      'list_teams',
+      'List all teams in Fleet',
+      {
+        page: z.number().optional().describe('Page number for pagination (0-indexed)'),
+        per_page: z.number().optional().describe('Number of results per page'),
+        order_key: z.string().optional().describe('Field to order results by'),
+        order_direction: z.string().optional().describe('Order direction (asc or desc)'),
+        query: z.string().optional().describe('Search query to filter teams')
+      },
+      async (params: {
+        page?: number;
+        per_page?: number;
+        order_key?: string;
+        order_direction?: string;
+        query?: string;
+      }) => {
+        try {
+          const queryParams = new URLSearchParams();
+          if (params.page !== undefined) queryParams.append('page', params.page.toString());
+          if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+          if (params.order_key) queryParams.append('order_key', params.order_key);
+          if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+          if (params.query) queryParams.append('query', params.query);
+          
+          const url = `/api/v1/fleet/teams${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          const response = await this.axiosInstance.get(url);
+          
+          const teams = response.data.teams || [];
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(teams, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the get_team_details tool
+    this.mcpServer.tool(
+      'get_team_details',
+      'Get detailed information about a specific team',
+      {
+        id: z.string().describe('Required. The team ID')
+      },
+      async (params: { id: string }) => {
+        try {
+          const response = await this.axiosInstance.get(`/api/v1/fleet/teams/${params.id}`);
+          const team = response.data.team;
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `\nRaw JSON response:\n${JSON.stringify(team, null, 2)}`,
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          
+          if (error.response?.status === 404) {
+            throw {
+              code: 'not_found',
+              message: `Team with ID ${params.id} not found`,
+            };
+          }
+          
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the list_global_policies tool
+    this.mcpServer.tool(
+      'list_global_policies',
+      'List all global policies in Fleet',
+      {},
+      async () => {
+        try {
+          const response = await this.axiosInstance.get('/api/v1/fleet/global/policies');
+          const policies = response.data.policies || [];
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(policies, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the list_queries tool
+    this.mcpServer.tool(
+      'list_queries',
+      'List all queries in Fleet',
+      {
+        page: z.number().optional().describe('Page number for pagination (0-indexed)'),
+        per_page: z.number().optional().describe('Number of results per page'),
+        order_key: z.string().optional().describe('Field to order results by'),
+        order_direction: z.string().optional().describe('Order direction (asc or desc)'),
+        query: z.string().optional().describe('Search query to filter queries')
+      },
+      async (params: {
+        page?: number;
+        per_page?: number;
+        order_key?: string;
+        order_direction?: string;
+        query?: string;
+      }) => {
+        try {
+          const queryParams = new URLSearchParams();
+          if (params.page !== undefined) queryParams.append('page', params.page.toString());
+          if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+          if (params.order_key) queryParams.append('order_key', params.order_key);
+          if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+          if (params.query) queryParams.append('query', params.query);
+          
+          const url = `/api/v1/fleet/queries${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          const response = await this.axiosInstance.get(url);
+          
+          const queries = response.data.queries || [];
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(queries, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the list_software_titles tool
+    this.mcpServer.tool(
+      'list_software_titles',
+      'List software titles in Fleet',
+      {
+        page: z.number().optional().describe('Page number for pagination (0-indexed)'),
+        per_page: z.number().optional().describe('Number of results per page'),
+        order_key: z.string().optional().describe('Field to order results by'),
+        order_direction: z.string().optional().describe('Order direction (asc or desc)'),
+        query: z.string().optional().describe('Search query to filter software'),
+        team_id: z.string().optional().describe('Filter by team ID'),
+        platform: z.string().optional().describe('Filter by platform (darwin, windows, linux)'),
+        available_for_install: z.boolean().optional().describe('Filter software available for install. If true, team_id must be set.')
+      },
+      async (params: {
+        page?: number;
+        per_page?: number;
+        order_key?: string;
+        order_direction?: string;
+        query?: string;
+        team_id?: string;
+        platform?: string;
+        available_for_install?: boolean;
+      }) => {
+        try {
+          const queryParams = new URLSearchParams();
+          if (params.page !== undefined) queryParams.append('page', params.page.toString());
+          if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+          if (params.order_key) queryParams.append('order_key', params.order_key);
+          if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+          if (params.query) queryParams.append('query', params.query);
+          if (params.team_id) queryParams.append('team_id', params.team_id);
+          if (params.platform) queryParams.append('platform', params.platform);
+          if (params.available_for_install !== undefined) queryParams.append('available_for_install', params.available_for_install.toString());
+          
+          const url = `/api/v1/fleet/software/titles${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          const response = await this.axiosInstance.get(url);
+          
+          const software = response.data.software_titles || [];
+          const count = response.data.count || software.length;
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(software, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
+    
+    // Register the list_users tool
+    this.mcpServer.tool(
+      'list_users',
+      'List all users in Fleet',
+      {
+        page: z.number().optional().describe('Page number for pagination (0-indexed)'),
+        per_page: z.number().optional().describe('Number of results per page'),
+        order_key: z.string().optional().describe('Field to order results by'),
+        order_direction: z.string().optional().describe('Order direction (asc or desc)'),
+        query: z.string().optional().describe('Search query to filter users'),
+        team_id: z.string().optional().describe('Filter by team ID')
+      },
+      async (params: {
+        page?: number;
+        per_page?: number;
+        order_key?: string;
+        order_direction?: string;
+        query?: string;
+        team_id?: string;
+      }) => {
+        try {
+          const queryParams = new URLSearchParams();
+          if (params.page !== undefined) queryParams.append('page', params.page.toString());
+          if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+          if (params.order_key) queryParams.append('order_key', params.order_key);
+          if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+          if (params.query) queryParams.append('query', params.query);
+          if (params.team_id) queryParams.append('team_id', params.team_id);
+          
+          const url = `/api/v1/fleet/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+          const response = await this.axiosInstance.get(url);
+          
+          const users = response.data.users || [];
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(users, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Fleet API error:', error);
+          throw {
+            code: 'internal_error',
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
+          };
+        }
+      }
+    );
   }
   
   /**
