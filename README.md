@@ -468,6 +468,16 @@ Sample prompt:
 claude -p "Does Victor's hosts have Microsoft Edge installed?" --mcp-config mcp-servers.json --allowedTools 'mcp__fleet__get_host,mcp__fleet__list_hosts,mcp__fleet__list_host_software' --output-format stream-json --system-prompt "You are an IT admin." --verbose
 ```
 
+## Run Fleet MCP server in production using PM2
+
+```
+npm install -g pm2
+pm2 start npm --name "fleet-mcp" -- start
+pm2 logs fleet-mcp   # See logs live
+pm2 save             # Save the current process list
+pm2 startup          # Setup PM2 to auto-start on reboot
+```
+
 ## Development
 
 ### Project Structure
