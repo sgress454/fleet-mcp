@@ -137,13 +137,26 @@ The server provides the following tools:
 
 1. `list_hosts` - List all hosts (devices) managed by Fleet
    - Parameters:
-     - `platform` (optional): Filter by platform (e.g., darwin, windows, ubuntu, ios, android)
-     - `status` (optional): Filter by status (online, offline)
-     - `team_id` (optional): Filter by team ID
-     - `email` (optional): Filter by user email
-     - `limit` (optional): Maximum number of results to return
+     - `page` (optional): Page number of the results to fetch
+     - `per_page` (optional): Results per page
+     - `order_key` (optional): What to order results by (id, detail_updated_at, hostname, platform, osquery_version, os_version, uptime, memory, computer_name, last_enrolled_at, team_id, policy_updated_at)
+     - `order_direction` (optional): The direction of the order (asc, desc). Default is "asc"
+     - `status` (optional): Filter by status (new, online, offline, mia, missing)
+     - `query` (optional): Search query for hostname, hardware_serial, uuid, ipv4, and email addresses
+     - `team_id` (optional): Filter by team ID. Use "0" for hosts assigned to "No team"
 
-2. `list_host_software` - List software installed on a specific host managed by Fleet
+2. `list_hosts_by_label_or_platform` - List hosts by label ID or platform
+   - Parameters:
+     - `id` (required): The label's ID (use list_labels tool to find platform label IDs)
+     - `page` (optional): Page number of the results to fetch
+     - `per_page` (optional): Results per page
+     - `order_key` (optional): What to order results by (same options as list_hosts)
+     - `order_direction` (optional): The direction of the order (asc, desc)
+     - `status` (optional): Filter by status (new, online, offline, mia, missing)
+     - `query` (optional): Search query for hostname, hardware_serial, uuid, and ipv4
+     - `team_id` (optional): Filter by team ID. Use "0" for hosts assigned to "No team"
+
+3. `list_host_software` - List software installed on a specific host managed by Fleet
    - Parameters:
      - `id` (required): The host ID
      - `available_for_install` (optional): If true, only list software that is available for install and automatically sets installed_only to false. Default is false.
@@ -342,6 +355,7 @@ Here are some example prompts you can use with Cline to test the Fleet MCP serve
 
 - "List all hosts managed by Fleet"
 - "List Windows hosts that belong to roadrunner@acme.com"
+- "List hosts by label ID 5"
 - "Get details for host with ID 123"
 - "Show me the Fleet server version"
 - "List all teams in Fleet"

@@ -261,96 +261,140 @@ class FleetMcpServer {
     
     // Register the list_hosts tool
     this.mcpServer.tool(
-      'list_hosts',
-      'List all hosts (devices) managed by Fleet',
+      'list_hosts_by_label_or_platform',
+      'List hosts (devices) managed by Fleet by the label or platform (e.g., darwin, windows, ubuntu, ios, android). In order to filter by platform, first use the list_labels tool to get the label_id corresponding to the builtin platform label.',
       {
-        platform: z.string().optional().describe('Filter by platform (e.g., darwin, windows, ubuntu, ios, android)'),
-        status: z.string().optional().describe('Filter by status (online, offline)'),
-        team_id: z.string().optional().describe('Filter by team ID'),
-        email: z.string().optional().describe('Filter by user email'),
-        limit: z.string().optional().describe('Maximum number of results to return')
+        id: z.number().describe('Required. The label\'s ID, which can be found using the list_labels tool'),
+        page: z.number().optional().describe('Page number of the results to fetch'),
+        per_page: z.number().optional().describe('Results per page'),
+        order_key: z.enum([
+          'id', 'detail_updated_at', 'hostname', 'platform', 'osquery_version', 'os_version', 'uptime', 'memory', 'computer_name', 'last_enrolled_at',
+          'team_id', 'policy_updated_at']
+        ).optional().describe('What to order results by'),
+        order_direction: z.enum(['asc', 'desc']).optional().describe('The direction of the order given the order key. Requires order_key to be set. Default is "asc"'),
+        status: z.enum(['new', 'online', 'offline', 'mia', 'missing']).optional().describe('Filter by status'),
+        query: z.string().optional().describe('Search query. Searchable fields include hostname, hardware_serial, uuid, and ipv4.'),
+        team_id: z.string().optional().describe('Filters to only include hosts in the specified team. Use 0 to filter by hosts assigned to "No team". Default is to return all hosts on all teams.'),
       },
       async (params: {
-        platform?: string;
-        status?: string;
+        id: number;
+        page?: number;
+        per_page?: number;
+        order_key?: 'id' | 'detail_updated_at' | 'hostname' | 'platform' | 'osquery_version' | 'os_version' | 'uptime' | 'memory' | 'computer_name' | 'last_enrolled_at' | 'team_id' | 'policy_updated_at';
+        order_direction?: 'asc' | 'desc';
+        status?: 'new' | 'online' | 'offline' | 'mia' | 'missing';
+        query?: string;
         team_id?: string;
-        email?: string;
-        limit?: string;
       }) => {
-        console.log('Tool handler called with params:', params);
-        console.log('Platform parameter:', params.platform);
-        
         try {
-          console.log('Making Fleet API call to get hosts...');
-          const response = await this.axiosInstance.get('/api/v1/fleet/hosts?device_mapping=true');
-          console.log('Fleet API call successful');
-          
-          // Get the hosts from the response
-          let hosts = response.data.hosts || [];
-          
-          // Apply platform filter if provided
-          if (params.platform) {
-            console.log(`Filtering by platform: ${params.platform}`);
-            hosts = hosts.filter((host: any) => host.platform === params.platform);
-            console.log(`Found ${hosts.length} hosts with platform ${params.platform}`);
-          }
-          
-          // Apply status filter if provided
-          if (params.status) {
-            console.log(`Filtering by status: ${params.status}`);
-            hosts = hosts.filter((host: any) => host.status === params.status);
-            console.log(`Found ${hosts.length} hosts with status ${params.status}`);
-          }
-          
-          // Apply team_id filter if provided
-          if (params.team_id) {
-            console.log(`Filtering by team_id: ${params.team_id}`);
-            hosts = hosts.filter((host: any) => host.team_id === parseInt(params.team_id!, 10));
-            console.log(`Found ${hosts.length} hosts with team_id ${params.team_id}`);
-          }
-          
-          // Apply email filter if provided
-          if (params.email) {
-            console.log(`Filtering by email: ${params.email}`);
-            hosts = hosts.filter((host: any) => {
-              // Check if the host has device_mapping with an email that matches
-              if (host.device_mapping && Array.isArray(host.device_mapping)) {
-                return host.device_mapping.some((mapping: any) =>
-                  mapping.email && mapping.email.toLowerCase() === params.email!.toLowerCase()
-                );
-              }
-              return false;
-            });
-            console.log(`Found ${hosts.length} hosts with email ${params.email}`);
-          }
-          
-          // Apply limit if provided
-          if (params.limit) {
-            const limit = parseInt(params.limit, 10);
-            if (!isNaN(limit) && limit > 0 && limit < hosts.length) {
-              console.log(`Limiting results to ${limit} hosts`);
-              hosts = hosts.slice(0, limit);
-            }
-          }
-          
+          // Build query parameters
+          const queryParams = new URLSearchParams();
+
+          // Add all provided parameters to the query string (except id which goes in the path)
+          if (params.page !== undefined) queryParams.append('page', params.page.toString());
+          if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+          if (params.order_key) queryParams.append('order_key', params.order_key);
+          if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+          if (params.status) queryParams.append('status', params.status);
+          if (params.query) queryParams.append('query', params.query);
+          if (params.team_id) queryParams.append('team_id', params.team_id);
+
+          const url = `/api/v1/fleet/labels/${params.id}/hosts?${queryParams.toString()}`;
+          console.log('Making Fleet API call to:', url);
+
+          const response = await this.axiosInstance.get(url);
+          console.log(`Fleet API call successful. Found ${response.data.hosts?.length || 0} hosts`);
+
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(hosts, null, 2),
+                text: JSON.stringify(response.data, null, 2),
               },
             ],
           };
-        } catch (error) {
+        } catch (error: any) {
           console.error('Fleet API error:', error);
+          
+          if (error.response?.status === 404) {
+            throw {
+              code: 'not_found',
+              message: `Label with ID ${params.id} not found`,
+            };
+          }
+          
           throw {
             code: 'internal_error',
-            message: `Fleet API error: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Fleet API error: ${error.response?.data?.message || error.message || String(error)}`,
           };
         }
       }
     );
-    
+
+    this.mcpServer.tool(
+        'list_hosts',
+        'List hosts (devices) managed by Fleet',
+        {
+          page: z.number().optional().describe('Page number of the results to fetch'),
+          per_page: z.number().optional().describe('Results per page'),
+          order_key: z.enum([
+            'id', 'detail_updated_at', 'hostname', 'platform', 'osquery_version', 'os_version', 'uptime', 'memory', 'computer_name', 'last_enrolled_at',
+            'team_id', 'policy_updated_at']
+          ).optional().describe('What to order results by'),
+          order_direction: z.enum(['asc', 'desc']).optional().describe('The direction of the order given the order key. Requires order_key to be set. Default is "asc"'),
+          status: z.enum(['new', 'online', 'offline', 'mia', 'missing']).optional().describe('Filter by status'),
+          query: z.string().optional().describe('Search query. Searchable fields include hostname, hardware_serial, uuid, ipv4 and the hosts\' email addresses (only searched if the query looks like an email address, i.e. contains an \'@\', no space, etc.).'),
+          team_id: z.string().optional().describe('Filters to only include hosts in the specified team. Use 0 to filter by hosts assigned to "No team". Default is to return all hosts on all teams.'),
+        },
+        async (params: {
+          page?: number;
+          per_page?: number;
+          order_key?: 'id' | 'detail_updated_at' | 'hostname' | 'platform' | 'osquery_version' | 'os_version' | 'uptime' | 'memory' | 'computer_name' | 'last_enrolled_at' | 'team_id' | 'policy_updated_at';
+          order_direction?: 'asc' | 'desc';
+          status?: 'new' | 'online' | 'offline' | 'mia' | 'missing';
+          query?: string;
+          team_id?: string;
+        }) => {
+          try {
+            // Build query parameters
+            const queryParams = new URLSearchParams();
+            
+            // Always include device_mapping
+            queryParams.append('device_mapping', 'true');
+            
+            // Add all provided parameters to the query string
+            if (params.page !== undefined) queryParams.append('page', params.page.toString());
+            if (params.per_page !== undefined) queryParams.append('per_page', params.per_page.toString());
+            if (params.order_key) queryParams.append('order_key', params.order_key);
+            if (params.order_direction) queryParams.append('order_direction', params.order_direction);
+            if (params.status) queryParams.append('status', params.status);
+            if (params.query) queryParams.append('query', params.query);
+            if (params.team_id) queryParams.append('team_id', params.team_id);
+            
+            const url = `/api/v1/fleet/hosts?${queryParams.toString()}`;
+            console.log('Making Fleet API call to:', url);
+            
+            const response = await this.axiosInstance.get(url);
+            console.log(`Fleet API call successful. Found ${response.data.hosts?.length || 0} hosts`);
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(response.data, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            console.error('Fleet API error:', error);
+            throw {
+              code: 'internal_error',
+              message: `Fleet API error: ${error instanceof Error ? error.message : String(error)}`,
+            };
+          }
+        }
+    );
+
     // Register the get_host tool
     this.mcpServer.tool(
       'get_host',
