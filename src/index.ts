@@ -192,17 +192,25 @@ class FleetMcpServer {
         id: z.string().describe('Required. The host ID'),
         available_for_install: z.boolean().optional().describe('If true, only list software that is available for install (added by the user) and automatically sets installed_only to false. Default is false.'),
         installed_only: z.boolean().optional().describe('If true, only list software that is actually installed (has installed_versions or status="installed"). Default is true. Ignored if available_for_install is true.'),
-        software_name: z.string().optional().describe('If provided, only list software that matches this name (case-insensitive partial match)')
+        software_name: z.string().optional().describe('If provided, only list software that matches this name (case-insensitive partial match)'),
+        page: z.number().optional().describe('Page number for pagination (0-indexed)'),
+        vulnerable: z.boolean().optional().describe('If true, only list software that has vulnerabilities'),
+        exploit: z.boolean().optional().describe('If true, only list software that has known exploits.  Requires `vulnerable=true` to be set as well'),
+        min_cvss_score: z.number().optional().describe('Minimum CVSS score to filter software by vulnerabilities.  Requires `vulnerable=true` to be set as well.'),
+        max_cvss_score: z.number().optional().describe('Maximum CVSS score to filter software by vulnerabilities.  Requires `vulnerable=true` to be set as well')
       },
       async (params: { id: string; available_for_install?: boolean; installed_only?: boolean; software_name?: string }) => {
         try {
           console.log(`Making Fleet API call to get software for host ID: ${params.id}`);
           
           // Build the URL with query parameters if needed
-          let url = `/api/v1/fleet/hosts/${params.id}/software?per_page=200`;
-          if (params.available_for_install) {
-            url += `&available_for_install=${params.available_for_install ? '1' : '0'}`;
-          }
+          let url = `/api/v1/fleet/hosts/${params.id}/software?`;
+          (['available_for_install', 'page', 'vulnerable', 'exploit', 'min_cvss_score', 'max_cvss_score'] as const).forEach((key) => {
+            // Use type assertion to index params safely
+            if ((params as any)[key] !== undefined) {
+              url += `${key}=${(params as any)[key]}&`;
+            }
+          });
           
           const response = await this.axiosInstance.get(url);
           console.log('Fleet API call successful');
@@ -339,8 +347,8 @@ class FleetMcpServer {
           per_page: z.number().optional().describe('Results per page'),
           order_key: z.enum([
             'id', 'detail_updated_at', 'hostname', 'platform', 'osquery_version', 'os_version', 'uptime', 'memory', 'computer_name', 'last_enrolled_at',
-            'team_id', 'policy_updated_at']
-          ).optional().describe('What to order results by'),
+            'team_id', 'policy_updated_at', 'issues']
+          ).optional().describe('What to order results by. Use `issues` to order by the number of issues (vulnerabilities + failing policies) reported by the host.'),
           order_direction: z.enum(['asc', 'desc']).optional().describe('The direction of the order given the order key. Requires order_key to be set. Default is "asc"'),
           status: z.enum(['new', 'online', 'offline', 'mia', 'missing']).optional().describe('Filter by status'),
           query: z.string().optional().describe('Search query. Searchable fields include hostname, hardware_serial, uuid, ipv4 and the hosts\' email addresses (only searched if the query looks like an email address, i.e. contains an \'@\', no space, etc.).'),
@@ -349,7 +357,7 @@ class FleetMcpServer {
         async (params: {
           page?: number;
           per_page?: number;
-          order_key?: 'id' | 'detail_updated_at' | 'hostname' | 'platform' | 'osquery_version' | 'os_version' | 'uptime' | 'memory' | 'computer_name' | 'last_enrolled_at' | 'team_id' | 'policy_updated_at';
+          order_key?: 'id' | 'detail_updated_at' | 'hostname' | 'platform' | 'osquery_version' | 'os_version' | 'uptime' | 'memory' | 'computer_name' | 'last_enrolled_at' | 'team_id' | 'policy_updated_at' | 'issues';
           order_direction?: 'asc' | 'desc';
           status?: 'new' | 'online' | 'offline' | 'mia' | 'missing';
           query?: string;
