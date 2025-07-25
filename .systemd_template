@@ -1,0 +1,13 @@
+[Unit]
+Description=Fleetbot MCP Server
+After=network.target
+
+[Service]
+User=${USER}
+WorkingDirectory=${DIR}
+ExecStart=npm run start
+EnvironmentFile=${DIR}/.env
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
