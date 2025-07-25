@@ -64,6 +64,11 @@ This MCP server implements the Model Context Protocol to provide AI assistants w
    ```
    This script will automatically add the Fleet MCP server to your Cline and/or Claude Desktop configuration.
 
+8. Install the MCP server as a service:
+   ```bash
+   ./install-service.sh
+   ```
+
 ## Usage
 
 ### Starting the Server
